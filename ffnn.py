@@ -15,6 +15,7 @@ class FFNN:
             input_size, output_size = layer_sizes[i], layer_sizes[i+1]
             if weight_init=='zero':
                 W=np.zeros((input_size+1, output_size))
+                
             elif weight_init=='random_uniform':
                 lower,upper =init_params.get('lower', -0.5), init_params.get('upper', 0.5)
                 W=np.random.uniform(lower,upper,(input_size+1, output_size))
@@ -39,7 +40,7 @@ class FFNN:
     def forward_propagation(self,X):
         A = X
         for i in range(self.num_layers):
-            A = np.hstack([A, np.ones((A.shape[0], 1))]) 
+            A = np.hstack([np.ones((A.shape[0], 1)), A])
             Z = np.dot(A, self.weights[i])  
             A = self.activation(Z, self.activations[i])
         return A
