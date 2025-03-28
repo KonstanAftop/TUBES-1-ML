@@ -37,8 +37,18 @@ class FFNN:
             tanh_x = np.tanh(x)
             return tanh_x if not derivative else 1 - tanh_x**2
         elif func == 'softmax':
-            exp_x = np.exp(x - np.max(x, axis=1, keepdims=True))
-            return exp_x / np.sum(exp_x, axis=1, keepdims=True)
+            x = np.atleast_2d(x)  # Pastikan x selalu 2D
+            x_max = np.max(x, axis=1, keepdims=True)  
+            x_stable = x - x_max  # Stabilisasi numerik
+
+            if np.isnan(x_stable).any() or np.isinf(x_stable).any():
+                print("Warning: NaN atau Inf ditemukan sebelum softmax")
+            print(x_stable)  # Debugging output
+
+            exp_x = np.exp(x_stable)
+            softmax_output = exp_x / (np.sum(exp_x, axis=1, keepdims=True) + 1e-12)  # Tambah epsilon
+    
+        return softmax_output
 
     def loss(self, y_pred, y_true, loss_func="mse", derivative=False):
         if loss_func == "mse":
@@ -99,6 +109,17 @@ class FFNN:
                     print(f"Epoch {epoch}: Train Loss = {train_loss:.5f}")
 
         return history
+    def infer(self, X):
+        """
+        Melakukan inferensi (prediksi) pada input X menggunakan model yang telah dilatih.
+        
+        Parameters:
+            X (numpy array): Data input dengan bentuk (n_samples, n_features)
+
+        Returns:
+            numpy array: Hasil prediksi model
+        """
+        return self.forward_propagation(X)
 
     def plot_network(self):
         fig, ax = plt.subplots(figsize=(8, 6))
@@ -142,13 +163,14 @@ class FFNN:
     def save(self, filename="model.pkl"):
         with open(filename, "wb") as f:
             pickle.dump(self, f)
+    
+        
 
     @staticmethod
     def load(filename="model.pkl"):
         with open(filename, "rb") as f:
             return pickle.load(f)
-        
-        
+    
 # === Contoh Penggunaan ===
 if __name__ == '__main__':
     X_train = np.array([[0, 0, 1], [0, 1, 2], [1, 0,3], [1, 1,2]])
