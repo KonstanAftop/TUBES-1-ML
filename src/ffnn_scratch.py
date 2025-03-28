@@ -37,18 +37,15 @@ class FFNN:
             tanh_x = np.tanh(x)
             return tanh_x if not derivative else 1 - tanh_x**2
         elif func == 'softmax':
-            x = np.atleast_2d(x)  # Pastikan x selalu 2D
+            x = np.atleast_2d(x)  
             x_max = np.max(x, axis=1, keepdims=True)  
-            x_stable = x - x_max  # Stabilisasi numerik
-
-            if np.isnan(x_stable).any() or np.isinf(x_stable).any():
-                print("Warning: NaN atau Inf ditemukan sebelum softmax")
-            print(x_stable)  # Debugging output
-
+            x_stable = x - x_max  
             exp_x = np.exp(x_stable)
-            softmax_output = exp_x / (np.sum(exp_x, axis=1, keepdims=True) + 1e-12)  # Tambah epsilon
-    
-        return softmax_output
+            softmax_output = exp_x / (np.sum(exp_x, axis=1, keepdims=True) + 1e-12)  
+
+            return softmax_output.squeeze()  
+
+
 
     def loss(self, y_pred, y_true, loss_func="mse", derivative=False):
         if loss_func == "mse":
@@ -56,7 +53,8 @@ class FFNN:
         elif loss_func == "binary_cross_entropy":
             return -np.mean(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred)) if not derivative else (y_pred - y_true) / (y_pred * (1 - y_pred))
         elif loss_func == "categorical_cross_entropy":
-            return -np.mean(np.sum(y_true * np.log(y_pred), axis=1)) if not derivative else (y_pred - y_true)
+            return -np.mean(np.sum(y_true * np.log(y_pred + 1e-12), axis=1)) if not derivative else (y_pred - y_true)
+
     def forward_propagation(self, X):
         A = X
         self.A_cache = [X]
@@ -85,8 +83,7 @@ class FFNN:
 
     def train(self, X, y, batch_size=4, epochs=1000, learning_rate=0.01, loss_func="mse", X_val=None, y_val=None, verbose=True):
         history = {'train_loss': [], 'val_loss': []}
-        
-        for epoch in range(epochs):
+        for epoch in range(epochs+1):
             for i in range(0, X.shape[0], batch_size):
                 X_batch = X[i:i+batch_size]
                 y_batch = y[i:i+batch_size]
@@ -164,30 +161,26 @@ class FFNN:
         with open(filename, "wb") as f:
             pickle.dump(self, f)
     
-        
-
     @staticmethod
     def load(filename="model.pkl"):
         with open(filename, "rb") as f:
             return pickle.load(f)
     
 # === Contoh Penggunaan ===
-if __name__ == '__main__':
-    X_train = np.array([[0, 0, 1], [0, 1, 2], [1, 0,3], [1, 1,2]])
-    y_train = np.array([[0], [1], [1], [0]])
-    X_val, y_val = X_train, y_train
+# if __name__ == '__main__':
+#     X_train = np.array([[0, 0, 1], [0, 1, 2], [1, 0,3], [1, 1,2]])
+#     y_train = np.array([[0], [1], [1], [0]])
+#     X_val, y_val = X_train, y_train
 
-    layer_sizes = [3, 64,64, 1]
-    activations = ['tanh','tanh', 'sigmoid']
-    init_params = {'lower': -1.0, 'upper': 1.0}
+#     layer_sizes = [3, 64,64, 1]
+#     activations = ['tanh','tanh', 'sigmoid']
+#     init_params = {'lower': -1.0, 'upper': 1.0}
 
-    model = FFNN(layer_sizes, activations, weight_init='random_uniform', init_params=init_params, seed=42)
-    history = model.train(X_train, y_train, batch_size=2, epochs=100, learning_rate=0.1, loss_func="binary_cross_entropy",
-                          X_val=X_val, y_val=y_val, verbose=1)
+#     model = FFNN(layer_sizes, activations, weight_init='random_normal', init_params=init_params, seed=42)
+#     history = model.train(X_train, y_train, batch_size=2, epochs=100, learning_rate=0.1, loss_func="binary_cross_entropy",
+#                           X_val=X_val, y_val=y_val, verbose=1)
 
-    model.plot_network()
-    model.plot_weight_distribution([0, 1,2], log_scale=True)
-    model.plot_gradient_distribution([0, 1,2], log_scale=True)
-    model.save("my_model.pkl")
-
-    loaded_model = FFNN.load("my_model.pkl")
+#     model.plot_network()
+#     model.plot_weight_distribution([0, 1,2], log_scale=True)
+#     model.plot_gradient_distribution([0, 1,2], log_scale=True)
+#     print(model.infer(X_val))
