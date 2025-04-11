@@ -106,8 +106,8 @@ class FFNN:
     def train(self, X, y, batch_size=4, epochs=1000, learning_rate=0.01, loss_func="mse", X_val=None, y_val=None, verbose=True,regularization=None, lambda_reg=0.0):
         history = {'train_loss': [], 'val_loss': []}
         
-        for epoch in range(epochs + 1):
-            pbar = tqdm(total=X.shape[0], desc=f"Epoch {epoch+1}/{epochs+1}", unit="inst")
+        for epoch in range(epochs):
+            pbar = tqdm(total=X.shape[0], desc=f"Epoch {epoch+1}/{epochs}", unit="inst")
 
             for i in range(0, X.shape[0], batch_size):
                 X_batch = X[i:i + batch_size]
