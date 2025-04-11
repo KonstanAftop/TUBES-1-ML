@@ -13,7 +13,9 @@ Tugas Besar 1 pada kuliah IF3270 Pembelajaran Mesin bertujuan untuk memberikan p
 ```bash
 git clone https://github.com/KonstanAftop/TUBES-1-ML.git
 cd src
-`FFNN Scratch Implementation` in `Testing_Notebook.ipynb`
+`FFNN Scratch Implementation` in `ffnn_scratch.py`
+`Testing Notebook` in `Testing_Notebook.ipynb`
+
 ```
 
 ## Team Members
