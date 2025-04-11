@@ -1,4 +1,4 @@
-# Data-Enjoyer
+# Group 63
 
 Tugas Besar 1 pada kuliah IF3270 Pembelajaran Mesin bertujuan untuk memberikan pengalaman langsung kepada peserta kuliah dalam mengimplementasi algoritma FFNN.
 
