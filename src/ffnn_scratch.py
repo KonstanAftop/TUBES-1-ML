@@ -172,7 +172,7 @@ class FFNN:
     def plot_weight_distribution(self, layers, log_scale=False):
         for i in layers:
             plt.figure(figsize=(6, 4))
-            plt.hist(self.weights[i].flatten(), bins=20, log=log_scale)
+            plt.hist(np.nan.to_num(self.weights[i].flatten(),posinf=1e10, neginf=-1e10), bins=20, log=log_scale)
             plt.title(f"Weight Distribution - Layer {i}")
             plt.xlabel("Weight Values")
             plt.ylabel("Frequency")
