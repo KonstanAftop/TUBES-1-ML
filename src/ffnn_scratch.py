@@ -1,6 +1,7 @@
 import numpy as np
 import pickle
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 class FFNN:
     def __init__(self, layer_sizes, activations, weight_init='zero', init_params=None, seed=42):
@@ -47,13 +48,23 @@ class FFNN:
 
 
 
-    def loss(self, y_pred, y_true, loss_func="mse", derivative=False):
+    def loss(self, y_pred, y_true, loss_func="mse", derivative=False,regularization=None, lambda_reg=0.0):
         if loss_func == "mse":
             return np.mean((y_pred - y_true) ** 2) if not derivative else (y_pred - y_true)
         elif loss_func == "binary_cross_entropy":
             return -np.mean(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred)) if not derivative else (y_pred - y_true) / (y_pred * (1 - y_pred))
         elif loss_func == "categorical_cross_entropy":
             return -np.mean(np.sum(y_true * np.log(y_pred + 1e-12), axis=1)) if not derivative else (y_pred - y_true)
+        
+        if regularization:
+            reg_term = 0
+            for W in self.weights:
+                W_no_bias = W[1:, :] 
+                if regularization == "l2":
+                    reg_term += np.sum(W_no_bias ** 2)
+                elif regularization == "l1":
+                    reg_term += np.sum(np.abs(W_no_bias))
+            loss_value += lambda_reg * reg_term
 
     def forward_propagation(self, X):
         A = X
@@ -69,28 +80,47 @@ class FFNN:
 
         return A
 
-    def backward_propagation(self, y_true, loss_func, learning_rate):
+    def backward_propagation(self, y_true, loss_func, learning_rate, regularization=None, lambda_reg=0.0):
         m = y_true.shape[0]
         dA = self.loss(self.A_cache[-1], y_true, loss_func, derivative=True)
 
-        self.gradients = []  
+        self.gradients = []
         for i in reversed(range(self.num_layers)):
             dZ = dA * self.activation(self.Z_cache[i], self.activations[i], derivative=True)
-            dW = np.dot(np.hstack([np.ones((self.A_cache[i].shape[0], 1)), self.A_cache[i]]).T, dZ) / m
+            A_prev = np.hstack([np.ones((self.A_cache[i].shape[0], 1)), self.A_cache[i]])
+            dW = np.dot(A_prev.T, dZ) / m
+
+           
+            if regularization == "l2":
+                dW[1:, :] += lambda_reg * self.weights[i][1:, :]
+            elif regularization == "l1":
+                dW[1:, :] += lambda_reg * np.sign(self.weights[i][1:, :])
+
             dA = np.dot(dZ, self.weights[i][1:].T)
             self.weights[i] -= learning_rate * dW
-            self.gradients.insert(0, dW)  
+            self.gradients.insert(0, dW)
 
-    def train(self, X, y, batch_size=4, epochs=1000, learning_rate=0.01, loss_func="mse", X_val=None, y_val=None, verbose=True):
+
+
+
+    def train(self, X, y, batch_size=4, epochs=1000, learning_rate=0.01, loss_func="mse", X_val=None, y_val=None, verbose=True,regularization=None, lambda_reg=0.0):
         history = {'train_loss': [], 'val_loss': []}
-        for epoch in range(epochs+1):
-            for i in range(0, X.shape[0], batch_size):
-                X_batch = X[i:i+batch_size]
-                y_batch = y[i:i+batch_size]
-                y_pred = self.forward_propagation(X_batch)
-                self.backward_propagation(y_batch, loss_func, learning_rate)
+        
+        for epoch in range(epochs + 1):
+            pbar = tqdm(total=X.shape[0], desc=f"Epoch {epoch+1}/{epochs+1}", unit="inst")
 
-            train_loss = self.loss(self.forward_propagation(X), y, loss_func)
+            for i in range(0, X.shape[0], batch_size):
+                X_batch = X[i:i + batch_size]
+                y_batch = y[i:i + batch_size]
+                y_pred = self.forward_propagation(X_batch)
+                self.backward_propagation(y_batch, loss_func, learning_rate,regularization, lambda_reg)
+
+               
+                pbar.update(len(X_batch))
+
+            pbar.close()
+
+            train_loss = self.loss(self.forward_propagation(X), y, loss_func, regularization=regularization, lambda_reg=lambda_reg)
             history['train_loss'].append(train_loss)
 
             val_loss = None
@@ -99,13 +129,13 @@ class FFNN:
                 history['val_loss'].append(val_loss)
 
             if verbose:
-                
                 if val_loss is not None:
-                    print(f"Epoch {epoch}: Train Loss = {train_loss:.5f}, Val Loss = {val_loss:.5f}")
+                    print(f"Epoch {epoch+1}: Train Loss = {train_loss:.5f}, Val Loss = {val_loss:.5f}")
                 else:
-                    print(f"Epoch {epoch}: Train Loss = {train_loss:.5f}")
+                    print(f"Epoch {epoch+1}: Train Loss = {train_loss:.5f}")
 
         return history
+
     def infer(self, X):
         """
         Melakukan inferensi (prediksi) pada input X menggunakan model yang telah dilatih.
@@ -165,22 +195,3 @@ class FFNN:
     def load(filename="model.pkl"):
         with open(filename, "rb") as f:
             return pickle.load(f)
-    
-# === Contoh Penggunaan ===
-# if __name__ == '__main__':
-#     X_train = np.array([[0, 0, 1], [0, 1, 2], [1, 0,3], [1, 1,2]])
-#     y_train = np.array([[0], [1], [1], [0]])
-#     X_val, y_val = X_train, y_train
-
-#     layer_sizes = [3, 64,64, 1]
-#     activations = ['tanh','tanh', 'sigmoid']
-#     init_params = {'lower': -1.0, 'upper': 1.0}
-
-#     model = FFNN(layer_sizes, activations, weight_init='random_normal', init_params=init_params, seed=42)
-#     history = model.train(X_train, y_train, batch_size=2, epochs=100, learning_rate=0.1, loss_func="binary_cross_entropy",
-#                           X_val=X_val, y_val=y_val, verbose=1)
-
-#     model.plot_network()
-#     model.plot_weight_distribution([0, 1,2], log_scale=True)
-#     model.plot_gradient_distribution([0, 1,2], log_scale=True)
-#     print(model.infer(X_val))
